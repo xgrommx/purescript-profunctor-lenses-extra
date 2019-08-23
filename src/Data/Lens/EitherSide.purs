@@ -32,5 +32,5 @@ eitherside lab lcd = swapped <<< N.under EitherSide lab <<< swapped <<< N.under 
 splitting :: forall p s t a b c d. Profunctor p => (s -> a) -> (b -> t) -> L.Optic p (Either c s) (Either d t) (Either c a) (Either d b)
 splitting f g = N.under EitherSide (dimap f g)
 
-lensOf :: forall s t a b c d. (b -> t) -> (s -> Either t a) -> L.Prism (Either c s) (Either d t) (Either c a) (Either d b)
-lensOf f g = N.under EitherSide (L.prism f g)
+prismOf :: forall s t a b c d. (b -> t) -> (s -> Either t a) -> L.Prism (Either c s) (Either d t) (Either c a) (Either d b)
+prismOf f g = N.under EitherSide (L.prism f g)
