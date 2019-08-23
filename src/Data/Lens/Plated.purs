@@ -1,6 +1,5 @@
 module Data.Lens.Plated where
 
-import Data.Array
 import Prelude
 
 import Control.Lazy (fix)
@@ -12,7 +11,10 @@ import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
 import Data.Lens as L
 import Data.List as List
+import Data.Map as M
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Monoid.Additive (Additive(..))
+import Data.Newtype (unwrap)
 import Data.Traversable (maximum, traverse)
 import Data.Tuple (Tuple(..))
 import Partial.Unsafe (unsafePartial)
@@ -20,9 +22,9 @@ import Partial.Unsafe (unsafePartial)
 partsOf ∷ forall s a. L.Traversal' s a -> L.Lens' s (Array a)
 partsOf o = L.lens getter setter
   where
-    getter s = L.foldMapOf o singleton s
+    getter s = L.foldMapOf o A.singleton s
     setter s xs = S.evalState (L.traverseOf o (S.state <<< fill) s) xs
-    fill a as = case uncons as of
+    fill a as = case A.uncons as of
       Nothing -> Tuple a []
       Just r -> Tuple r.head r.tail
 
@@ -92,6 +94,19 @@ rewriteOn b = L.over b <<< rewrite
 
 rewriteOnOf :: forall s t a b. L.Setter s t a b -> L.Setter a b a b -> (b -> Maybe a) -> s -> t
 rewriteOnOf b l = L.over b <<< rewriteOf l
+
+transformM :: forall m a. Monad m => Plated a => (a -> m a) -> a -> m a
+transformM = transformMOf plate
+
+transformMOf :: forall m a b. Monad m => L.Traversal a b a b -> (b -> m b) -> a -> m b
+transformMOf l f = go where
+  go t = L.traverseOf l go t >>= f
+
+transformMOn :: forall m s a. Monad m => Plated a => L.Traversal' s a -> (a -> m a) -> s -> m s
+transformMOn b = L.traverseOf b <<< transformM
+
+transformMOnOf :: forall m s t a b. Monad m => L.Traversal s t a b -> L.Traversal a b a b -> (b -> m b) -> s -> m t
+transformMOnOf b l = L.traverseOf b <<< transformMOf l
 
 class Plated a where
   plate ∷ L.Traversal' a a
@@ -171,3 +186,20 @@ distr ∷ Expr -> Expr
 distr  = transform $ \x -> case x of
   Mul a (Add c d) -> Add (Mul a c) (Mul a d)
   _ -> x
+
+data T = L | B T T
+
+derive instance genericT :: Generic T _
+
+instance showT :: Show T where
+  show t = genericShow t
+
+instance platedT :: Plated T where
+  plate = L.wander go
+    where
+      go :: forall f. Applicative f => (T -> f T) -> T -> f T
+      go f L = pure L
+      go f (B a b) = B <$> f a <*> f b
+
+t :: T
+t = (B L (B (B L L) L))
