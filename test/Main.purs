@@ -3,9 +3,8 @@ module Test.Main where
 import Prelude
 
 import Effect (Effect)
-import Effect.Console (log)
+import Test.Data.Lens.Argonaut (argonautSpec)
 
 main :: Effect Unit
 main = do
-  log "🍝"
-  log "You should add some tests."
+  argonautSpec

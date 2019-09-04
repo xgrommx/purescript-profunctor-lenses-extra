@@ -9,18 +9,20 @@ import Data.Bifunctor (class Bifunctor, bimap, lmap, rmap)
 import Data.Bitraversable (class Bitraversable, bitraverse)
 import Data.Either (Either(..))
 import Data.Functor.Contravariant (class Contravariant, cmap)
-import Data.Lens (APrism, APrism', AnIso, Forget, Getter, Indexed(..), IndexedOptic, IndexedTraversal, Iso, Optic, Optic', Prism, Prism', Traversal, collectOf, foldMapOf, foldrOf, iso, prism, traverseOf, wander, withIso, withPrism, zipFWithOf, (.~)) as L
+import Data.Lens (APrism, APrism', AnIso, Fold, Forget, Getter, Indexed(..), IndexedOptic, IndexedTraversal, Iso, Optic, Optic', Prism, Prism', Traversal, anyOf, collectOf, filtered, foldMapOf, foldrOf, has, iso, prism, traverseOf, wander, withIso, withPrism, zipFWithOf, (.~)) as L
 import Data.Lens (class Wander)
 import Data.Lens.At (class At, at) as L
 import Data.Lens.Indexed (iwander) as L
 import Data.List.Lazy as LL
 import Data.List.ZipList (ZipList(..))
 import Data.Maybe (Maybe(..))
+import Data.Monoid.Disj (Disj(..))
 import Data.Monoid.Endo (Endo)
 import Data.Newtype as N
 import Data.Profunctor (class Profunctor)
 import Data.Profunctor as P
-import Data.Profunctor.Star (Star (..))
+import Data.Profunctor.Choice (class Choice)
+import Data.Profunctor.Star (Star(..))
 import Data.Traversable (class Traversable, traverse)
 import Data.Tuple (Tuple(..), swap)
 import Unsafe.Coerce (unsafeCoerce)
@@ -30,6 +32,9 @@ type FilterLike f s t a b = L.Optic (Star f) s t a (Maybe b)
 infixr 4 L.collectOf as %%~
 
 infixr 4 L.zipFWithOf as ~%%
+
+from ∷ forall s t a b. L.AnIso s t a b -> L.Iso b a t s
+from l = L.withIso l $ \ sa bt -> L.iso bt sa
 
 cmapping ∷ forall f s t a b. Contravariant f => L.AnIso s t a b -> L.Iso (f a) (f b) (f s) (f t)
 cmapping f = L.withIso f $ \ sa bt -> L.iso (cmap sa) (cmap bt)
@@ -104,3 +109,9 @@ filteredOf
   -> (a -> Boolean)
   -> L.Optic p s t a a
 filteredOf tr pr = L.wander \f -> N.unwrap $ tr $ Star $ \a -> if pr a then f a else pure a
+
+filteredBy :: forall p s t a b. Choice p => (a -> Boolean) -> L.Fold (Disj Boolean) s t a b -> L.Optic' p s s
+filteredBy cond lens = L.filtered (L.anyOf lens cond)
+
+filteredByLens :: forall p s t a b. Choice p => L.Fold (Disj Boolean) s t a b -> L.Optic' p s s
+filteredByLens lens = L.filtered (L.has lens)

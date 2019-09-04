@@ -5,7 +5,9 @@ You can edit this file as you like.
 { name =
     "my-project"
 , dependencies =
-    [ "argonaut"
+    [ "aff"
+    , "argonaut"
+    , "assert"
     , "console"
     , "effect"
     , "filterable"
@@ -13,6 +15,7 @@ You can edit this file as you like.
     , "generics-rep"
     , "profunctor-lenses"
     , "psci-support"
+    , "spec"
     , "variant"
     ]
 , packages =
