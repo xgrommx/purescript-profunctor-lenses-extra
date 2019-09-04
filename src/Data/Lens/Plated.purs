@@ -2,6 +2,7 @@ module Data.Lens.Plated where
 
 import Prelude
 
+import Control.Apply (lift2)
 import Control.Lazy (fix)
 import Control.Monad.State as S
 import Data.Argonaut (Json, caseJson, fromArray, fromBoolean, fromNumber, fromObject, fromString, jsonNull)
@@ -14,9 +15,11 @@ import Data.List as List
 import Data.Map as M
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Monoid.Additive (Additive(..))
-import Data.Newtype (unwrap)
+import Data.Newtype (over, un, unwrap)
+import Data.Profunctor (class Profunctor)
 import Data.Traversable (maximum, traverse)
 import Data.Tuple (Tuple(..))
+import Effect (Effect)
 import Partial.Unsafe (unsafePartial)
 
 partsOf ∷ forall s a. L.Traversal' s a -> L.Lens' s (Array a)
@@ -40,19 +43,25 @@ para = paraOf plate
 paraOf :: forall a r. L.Fold' (Array a) a a -> (a -> Array r -> r) -> a -> r
 paraOf l f = go where go a = f a (go <$> L.foldMapOf l A.singleton a)
 
-cosmosOf ∷ ∀ a . L.Traversal' a a → L.Traversal' a a
-cosmosOf d = L.wander (go (L.traverseOf d))
+cosmosOf' ∷ ∀ a . L.Traversal' a a → L.Traversal' a a
+cosmosOf' d = L.wander (go (L.traverseOf d))
   where
     go :: forall f. Applicative f => ((a -> f a) -> a -> f a) -> (a -> f a) -> a -> f a
     go = fix (\r d f s -> f s *> d (r d f) s)
 
-cosmos :: forall a. Plated a => L.Traversal' a a
+cosmos' :: forall a. Plated a => L.Traversal' a a
+cosmos' = cosmosOf' plate
+
+cosmosOf :: forall r a. Semigroup r ⇒ L.Fold' r a a -> L.Fold' r a a
+cosmosOf = fix (\r d -> over L.Forget (\f s -> f s <> unwrap (d (r d (L.Forget f))) s)) --over L.Forget (\f s -> f s <> unwrap (d (cosmosOf' d (L.Forget f))) s)
+
+cosmos :: forall r a. Monoid r => Plated a => L.Fold' r a a
 cosmos = cosmosOf plate
 
-cosmosOn :: forall s a. Plated a => L.Traversal' s a -> L.Traversal' s a
+cosmosOn :: forall r s a. Monoid r => Plated a => L.Fold' r s a -> L.Fold' r s a
 cosmosOn d = cosmosOnOf d plate
 
-cosmosOnOf :: forall s a. L.Traversal' s a -> L.Traversal' a a -> L.Traversal' s a
+cosmosOnOf :: forall r s a. Monoid r => L.Fold' r s a -> L.Fold' r a a -> L.Fold' r s a
 cosmosOnOf d p = d <<< cosmosOf p
 
 children ∷ forall a. Plated a => a -> List.List a

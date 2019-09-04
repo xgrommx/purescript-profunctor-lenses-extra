@@ -9,3 +9,5 @@
 /.psa*
 /.spago
 /src/Data/Lens/UnCategorized.purs
+/src/Data/Lens/Trash.purs
+/src/Data/Utils.*
