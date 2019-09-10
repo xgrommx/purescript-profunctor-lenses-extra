@@ -2,21 +2,20 @@ module Data.Lens.Extra where
 
 import Prelude
 
-import Control.Monad.Reader (class MonadAsk, asks)
 import Control.Monad.State as S
 import Control.Plus (class Plus, (<|>), empty)
 import Data.Bifunctor (class Bifunctor, bimap, lmap, rmap)
 import Data.Bitraversable (class Bitraversable, bitraverse)
 import Data.Either (Either(..))
 import Data.Functor.Contravariant (class Contravariant, cmap)
-import Data.Lens (APrism, APrism', AnIso, Fold, Forget, Getter, Indexed(..), IndexedOptic, IndexedTraversal, Iso, Optic, Optic', Prism, Prism', Traversal, anyOf, collectOf, filtered, foldMapOf, foldrOf, has, iso, prism, traverseOf, wander, withIso, withPrism, zipFWithOf, (.~)) as L
+import Data.Lens (APrism, APrism', AnIso, Fold, Forget, Indexed(..), IndexedOptic, IndexedTraversal, Iso, Optic, Optic', Prism, Prism', Traversal, anyOf, collectOf, filtered, foldrOf, has, iso, prism, traverseOf, wander, withIso, withPrism, zipFWithOf, (.~)) as L
 import Data.Lens (class Wander)
 import Data.Lens.At (class At, at) as L
 import Data.Lens.Indexed (iwander) as L
 import Data.List.Lazy as LL
 import Data.List.ZipList (ZipList(..))
 import Data.Maybe (Maybe(..))
-import Data.Monoid.Disj (Disj(..))
+import Data.Monoid.Disj (Disj)
 import Data.Monoid.Endo (Endo)
 import Data.Newtype as N
 import Data.Profunctor (class Profunctor)

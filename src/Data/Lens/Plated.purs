@@ -2,7 +2,6 @@ module Data.Lens.Plated where
 
 import Prelude
 
-import Control.Apply (lift2)
 import Control.Lazy (fix)
 import Control.Monad.State as S
 import Data.Argonaut (Json, caseJson, fromArray, fromBoolean, fromNumber, fromObject, fromString, jsonNull)
@@ -12,14 +11,10 @@ import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
 import Data.Lens as L
 import Data.List as List
-import Data.Map as M
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
-import Data.Monoid.Additive (Additive(..))
-import Data.Newtype (over, un, unwrap)
-import Data.Profunctor (class Profunctor)
+import Data.Newtype (over, unwrap)
 import Data.Traversable (maximum, traverse)
 import Data.Tuple (Tuple(..))
-import Effect (Effect)
 import Partial.Unsafe (unsafePartial)
 
 partsOf ∷ forall s a. L.Traversal' s a -> L.Lens' s (Array a)
@@ -41,19 +36,19 @@ para :: forall r a. Plated a => (a -> Array r -> r) -> a -> r
 para = paraOf plate
 
 paraOf :: forall a r. L.Fold' (Array a) a a -> (a -> Array r -> r) -> a -> r
-paraOf l f = go where go a = f a (go <$> L.foldMapOf l A.singleton a)
+paraOf = fix \r l f a -> f a (r l f <$> L.foldMapOf l A.singleton a)
 
 cosmosOf' ∷ ∀ a . L.Traversal' a a → L.Traversal' a a
 cosmosOf' d = L.wander (go (L.traverseOf d))
   where
     go :: forall f. Applicative f => ((a -> f a) -> a -> f a) -> (a -> f a) -> a -> f a
-    go = fix (\r d f s -> f s *> d (r d f) s)
+    go = fix \r d f s -> f s *> d (r d f) s
 
 cosmos' :: forall a. Plated a => L.Traversal' a a
 cosmos' = cosmosOf' plate
 
 cosmosOf :: forall r a. Semigroup r ⇒ L.Fold' r a a -> L.Fold' r a a
-cosmosOf = fix (\r d -> over L.Forget (\f s -> f s <> unwrap (d (r d (L.Forget f))) s)) --over L.Forget (\f s -> f s <> unwrap (d (cosmosOf' d (L.Forget f))) s)
+cosmosOf = fix \r d -> over L.Forget (\f s -> f s <> unwrap (d (r d (L.Forget f))) s)
 
 cosmos :: forall r a. Monoid r => Plated a => L.Fold' r a a
 cosmos = cosmosOf plate
@@ -71,7 +66,7 @@ universe ∷ forall a. Plated a => a -> (Array a)
 universe = universeOf plate
 
 universeOf ∷ forall a. L.Fold' (Array a) a a -> a -> Array a
-universeOf l = go where go a = A.cons a (L.foldMapOf l go a)
+universeOf = fix \r l a -> A.cons a (L.foldMapOf l (r l) a)
 
 universeOn ::  forall s a. Plated a => L.Fold' (Array a) s a -> s -> Array a
 universeOn b = universeOnOf b plate
@@ -83,7 +78,7 @@ transform ∷ forall a. Plated a => (a -> a) -> a -> a
 transform = transformOf plate
 
 transformOf ∷ forall a b. L.Setter a b a b -> (b -> b) -> a -> b
-transformOf l f = go where go a = f (L.over l go a)
+transformOf = fix \r l f a -> f (L.over l (r l f) a)
 
 transformOn :: forall s t a. Plated a => L.Setter s t a a -> (a -> a) -> s -> t
 transformOn b = L.over b <<< transform
@@ -95,8 +90,7 @@ rewrite :: forall a. Plated a => (a -> Maybe a) -> a -> a
 rewrite = rewriteOf plate
 
 rewriteOf :: forall a b. L.Setter a b a b -> (b -> Maybe a) -> a -> b
-rewriteOf l f = go where
-  go = transformOf l (\x -> maybe x go (f x))
+rewriteOf = fix \r l f -> transformOf l (\v -> maybe v (r l f) (f v))
 
 rewriteOn :: forall s t a. Plated a => L.Setter s t a a -> (a -> Maybe a) -> s -> t
 rewriteOn b = L.over b <<< rewrite
@@ -108,8 +102,7 @@ transformM :: forall m a. Monad m => Plated a => (a -> m a) -> a -> m a
 transformM = transformMOf plate
 
 transformMOf :: forall m a b. Monad m => L.Traversal a b a b -> (b -> m b) -> a -> m b
-transformMOf l f = go where
-  go t = L.traverseOf l go t >>= f
+transformMOf l = fix \r f a -> L.traverseOf l (r f) a >>= f
 
 transformMOn :: forall m s a. Monad m => Plated a => L.Traversal' s a -> (a -> m a) -> s -> m s
 transformMOn b = L.traverseOf b <<< transformM
