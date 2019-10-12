@@ -11,6 +11,7 @@ import Data.Newtype as N
 import Data.Profunctor (class Profunctor, dimap)
 import Data.Profunctor.Strong (class Strong, second)
 import Data.Tuple (Tuple(..))
+import Data.Lens.Assoc
 
 newtype AlongSide p c d a b = AlongSide (p (Tuple c a) (Tuple d b))
 
@@ -21,14 +22,11 @@ instance showAlongSide :: Show (p (Tuple c a) (Tuple d b)) => Show (AlongSide p 
   show a = genericShow a
 
 instance profunctorAlongSide :: Profunctor p => Profunctor (AlongSide p c d) where
-  dimap f g (AlongSide pab) = AlongSide $ dimap (map f) (map g) pab
+  dimap f g = N.over AlongSide (dimap (map f) (map g))
 
 instance strongAlongside :: Strong p => Strong (AlongSide p c d) where
   first p = swapped (second p)
-  second (AlongSide pab) = AlongSide (dimap shuffle shuffle (second pab))
-    where
-      shuffle :: forall x y z. Tuple z (Tuple x y) -> Tuple x (Tuple z y)
-      shuffle (Tuple x (Tuple y z)) = Tuple y (Tuple x z)
+  second = N.over AlongSide (shuffled <<< second)
 
 alongside :: forall p sc sd ta tb a b c d. Profunctor p => L.Optic (AlongSide p sc sd) ta tb a b -> L.Optic (AlongSide p a b) sc sd c d -> L.Optic p (Tuple ta sc) (Tuple tb sd) (Tuple a c) (Tuple b d)
 alongside lab lcd = swapped <<< N.under AlongSide lab <<< swapped <<< N.under AlongSide lcd

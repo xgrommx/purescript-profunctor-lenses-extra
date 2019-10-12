@@ -4,16 +4,23 @@ import Data.Bifunctor (class Bifunctor)
 import Data.Either (Either(..))
 import Data.Lens as L
 import Data.Profunctor.Choice ((|||))
-import Data.Tuple (Tuple, swap)
+import Data.Tuple (Tuple)
+import Data.Tuple (swap) as T
+import Data.These
 
-switch :: forall a b. Either a b -> Either b a
-switch = Right ||| Left
+class Swap p where
+  swap :: forall a b. p a b -> p b a
 
-class Bifunctor p <= Swapped p where
-  swapped ∷ forall a b c d. L.Iso (p a b) (p c d) (p b a) (p d c)
+instance swapTuple :: Swap Tuple where
+  swap = T.swap
 
-instance swappedTuple ∷ Swapped Tuple where
-  swapped = L.iso swap swap
+instance swapEither :: Swap Either where
+  swap = Right ||| Left
 
-instance swappedEither ∷ Swapped Either where
-  swapped = L.iso switch switch
+instance swapThese :: Swap These where
+  swap (This a) = That a
+  swap (That a) = This a
+  swap (Both a b) = Both b a
+
+swapped ∷ forall p a b c d. Swap p => L.Iso (p a b) (p c d) (p b a) (p d c)
+swapped = L.iso swap swap

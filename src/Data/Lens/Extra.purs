@@ -8,7 +8,7 @@ import Data.Bifunctor (class Bifunctor, bimap, lmap, rmap)
 import Data.Bitraversable (class Bitraversable, bitraverse)
 import Data.Either (Either(..))
 import Data.Functor.Contravariant (class Contravariant, cmap)
-import Data.Lens (APrism, APrism', AnIso, Fold, Forget, Indexed(..), IndexedOptic, IndexedTraversal, Iso, Optic, Optic', Prism, Prism', Traversal, anyOf, collectOf, filtered, foldrOf, has, iso, prism, traverseOf, wander, withIso, withPrism, zipFWithOf, (.~)) as L
+import Data.Lens (Lens', APrism, APrism', AnIso, Fold, Forget, Indexed(..), IndexedOptic, IndexedTraversal, Iso, Optic, Optic', Prism, Prism', Traversal, Traversal', set, view, lens, anyOf, collectOf, filtered, foldrOf, has, iso, prism, traverseOf, wander, withIso, withPrism, zipFWithOf, (.~)) as L
 import Data.Lens (class Wander)
 import Data.Lens.At (class At, at) as L
 import Data.Lens.Indexed (iwander) as L
@@ -25,6 +25,9 @@ import Data.Profunctor.Star (Star(..))
 import Data.Traversable (class Traversable, traverse)
 import Data.Tuple (Tuple(..), swap)
 import Unsafe.Coerce (unsafeCoerce)
+import Data.Lens.Plated (partsOf)
+import Data.Lens.Each (each)
+import Data.Profunctor.Strong ((&&&))
 
 type FilterLike f s t a b = L.Optic (Star f) s t a (Maybe b)
 
@@ -114,3 +117,9 @@ filteredBy cond lens = L.filtered (L.anyOf lens cond)
 
 filteredByLens :: forall p s t a b. Choice p => L.Fold (Disj Boolean) s t a b -> L.Optic' p s s
 filteredByLens lens = L.filtered (L.has lens)
+
+lensProduct :: forall s a b. L.Lens' s a -> L.Lens' s b -> L.Lens' s (Tuple a b)
+lensProduct l1 l2 = L.lens (L.view l1 &&& L.view l2) (\s (Tuple x y) -> L.set l1 x <<< L.set l2 y $ s)
+
+adjoin :: forall s a. L.Traversal' s a -> L.Traversal' s a -> L.Traversal' s a
+adjoin t1 t2 = lensProduct (partsOf t1) (partsOf t2) <<< both <<< each
